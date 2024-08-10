@@ -2,6 +2,7 @@
 extern crate rocket;
 
 use rocket::futures::TryStreamExt;
+use rocket::serde::{Serialize, json::Json};
 use rocket_db_pools::sqlx::{self, Row};
 use rocket_db_pools::{Connection, Database};
 
@@ -40,8 +41,28 @@ fn check_offset(offset: i8) -> Result<()> {
 	Ok(())
 }
 
+/// 某日的次数统计
+#[derive(Serialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[serde(crate = "rocket::serde")]
+struct DayCount {
+	/// 日期
+	///
+	/// 范围为 1 到 (28|29|30|31), 依据请求的月份决定
+	///
+	/// # Note
+	///
+	/// 数据库内不会检查日期的可靠性, 只能依靠插入时的检查.
+	/// 因此查询时可能得到错误的结果.
+	day: u8,
+
+	/// 次数
+	times: u32,
+}
+
+type MonthCount = Vec<DayCount>;
+
 #[get("/dates?<month>&<year>")]
-async fn dates(month: u8, year: i32, mut db: Connection<Records>) -> Result<String> {
+async fn dates(month: u8, year: i32, mut db: Connection<Records>) -> Result<Json<MonthCount>> {
 	check_date(month, year)?;
 
 	const SQL_SELECT: &str =
@@ -50,14 +71,14 @@ async fn dates(month: u8, year: i32, mut db: Connection<Records>) -> Result<Stri
 	                                     .bind(month)
 	                                     .fetch(&mut **db);
 
-	let mut ans: Vec<(u8, u32)> = Vec::new();
+	let mut ans: Vec<DayCount> = Vec::new();
 
 	// TODO: 删除用于快速验证的错误转换
 	while let Some(row) = res.try_next().await.map_err(|e| e.to_string())? {
-		ans.push((row.get(0), row.get(1)));
+		ans.push(DayCount{ day: row.get(0), times: row.get(1)});
 	}
 
-	Ok(format!("{:?}", ans))
+	Ok(Json(ans))
 }
 
 #[get("/fixed_dates?<offset>&<month>&<year>")]
