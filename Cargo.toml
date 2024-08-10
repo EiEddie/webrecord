@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 rocket = { version = "0.5.1", features = ["json"] }
+thiserror = "1.0.63"
 
 [dependencies.rocket_db_pools]
 version = "0.2.0"
