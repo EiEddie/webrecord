@@ -1,0 +1,2 @@
+[default.databases.records]
+url = "assets/test/test.sqlite"
