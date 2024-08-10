@@ -1,6 +1,16 @@
 #[macro_use]
 extern crate rocket;
 
+use rocket::futures::TryStreamExt;
+use rocket_db_pools::sqlx::{self, Row};
+use rocket_db_pools::{Connection, Database};
+
+
+#[derive(Database)]
+#[database("records")]
+struct Records(sqlx::SqlitePool);
+
+
 // TODO: 快速测试
 #[allow(unused)]
 type Result<T> = std::result::Result<T, String>;
@@ -31,9 +41,23 @@ fn check_offset(offset: i8) -> Result<()> {
 }
 
 #[get("/dates?<month>&<year>")]
-fn dates(month: u8, year: i32) -> Result<String> {
+async fn dates(month: u8, year: i32, mut db: Connection<Records>) -> Result<String> {
 	check_date(month, year)?;
-	Ok(format!("{year}-{month:02}"))
+
+	const SQL_SELECT: &str =
+		"SELECT day, COUNT(*) AS times FROM main WHERE year=$1 AND month=$2 GROUP BY day";
+	let mut res = sqlx::query(SQL_SELECT).bind(year)
+	                                     .bind(month)
+	                                     .fetch(&mut **db);
+
+	let mut ans: Vec<(u8, u32)> = Vec::new();
+
+	// TODO: 删除用于快速验证的错误转换
+	while let Some(row) = res.try_next().await.map_err(|e| e.to_string())? {
+		ans.push((row.get(0), row.get(1)));
+	}
+
+	Ok(format!("{:?}", ans))
 }
 
 #[get("/fixed_dates?<offset>&<month>&<year>")]
@@ -46,5 +70,6 @@ fn fixed_dates(offset: i8, month: u8, year: i32) -> Result<String> {
 
 #[launch]
 fn rocket() -> _ {
-	rocket::build().mount("/stat", routes![dates, fixed_dates])
+	rocket::build().attach(Records::init())
+	               .mount("/stat", routes![dates, fixed_dates])
 }
