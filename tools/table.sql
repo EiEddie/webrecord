@@ -2,7 +2,7 @@ CREATE TABLE 'main' (
   'year' INTEGER NOT NULL DEFAULT (CAST(substr(CURRENT_DATE, 1, 4) AS INTEGER)),
   'month' INTEGER NOT NULL DEFAULT (CAST(substr(CURRENT_DATE, 6, 2) AS INTEGER)) CHECK (month >= 1 AND month <= 12),
   'day' INTEGER NOT NULL DEFAULT (CAST(substr(CURRENT_DATE, 9, 2) AS INTEGER)) CHECK (day >= 1 AND day <= 31),
-  'time' TEXT DEFAULT NULL
+  'time' TEXT DEFAULT NULL CHECK (length(time)=5 OR time IS NULL)
 );
 
 
