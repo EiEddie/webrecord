@@ -20,6 +20,15 @@ pub enum Error {
 	/// 由 `sqlx` 产生
 	#[error(transparent)]
 	DatabaseErr(#[from] ::rocket_db_pools::sqlx::Error),
+
+	/// 日期与时间转换错误
+	///
+	/// 由 `time` 产生
+	///
+	/// 与 [`Error::DateWrong`] 不同, 此为服务器内部出现的错误,
+	/// 并非用户输入问题. 不应暴露给用户.
+	#[error(transparent)]
+	DateTimeErr(#[from] ::rocket::time::error::ComponentRange),
 }
 
 impl From<&'static str> for Error {
@@ -41,7 +50,7 @@ pub fn err_status(res: Result<()>) -> Status {
 	if let Some(err) = err {
 		match err {
 			Error::DateWrong(..) | Error::OffsetWrong(_) => Status::BadRequest,
-			Error::DatabaseErr(_) => Status::InternalServerError,
+			Error::DatabaseErr(_) | Error::DateTimeErr(_) => Status::InternalServerError,
 			Error::Msg(_) => Status::InternalServerError,
 		}
 	} else {

@@ -10,16 +10,17 @@ use webrecord::func::*;
 
 #[get("/dates?<month>&<year>")]
 async fn dates(month: u8, year: i32, db: Connection<Records>) -> (Status, Json<MonthCount>) {
-	let mut ans: Vec<DayCount> = Vec::new();
+	let mut ans: MonthCount = Vec::with_capacity(31);
 	let res = select_dates(&mut ans, month, year, db).await;
 	(err_status(res), Json(ans))
 }
 
 #[get("/fixed_dates?<offset>&<month>&<year>")]
-fn fixed_dates(offset: i8, month: u8, year: i32) -> String {
-	// check_date(month, year)?;
-	// check_offset(offset)?;
-	format!("{year}-{month:02} [{offset:+02}]")
+async fn fixed_dates(offset: i8, month: u8, year: i32, db: Connection<Records>)
+                     -> (Status, Json<MonthCount>) {
+	let mut ans: MonthCount = Vec::with_capacity(31);
+	let res = select_fixed_dates(&mut ans, offset, month, year, db).await;
+	(err_status(res), Json(ans))
 }
 
 
