@@ -138,7 +138,7 @@ pub async fn select_fixed_dates(buf: &mut MonthCount, offset: i8, month: u8, yea
 	let month_day_ordinal = begin + if offset < 0 { 1 } else { 0 };
 
 	const SQL_SELECT: &str = "SELECT ordinal, time FROM main INNER JOIN extrainfo AS ex ON \
-	                          main.rowid=ex.id WHERE ordinal BETWEEN $1 AND $2";
+	                          main.id=ex.main_id WHERE ordinal BETWEEN $1 AND $2";
 	let mut res = sqlx::query(SQL_SELECT).bind(begin)
 	                                     .bind(end)
 	                                     .fetch(&mut **db);

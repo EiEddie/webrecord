@@ -1,58 +1,51 @@
-CREATE TABLE 'main' (
-  'year' INTEGER NOT NULL DEFAULT (CAST(substr(CURRENT_DATE, 1, 4) AS INTEGER)),
-  'month' INTEGER NOT NULL DEFAULT (CAST(substr(CURRENT_DATE, 6, 2) AS INTEGER)) CHECK (month >= 1 AND month <= 12),
-  'day' INTEGER NOT NULL DEFAULT (CAST(substr(CURRENT_DATE, 9, 2) AS INTEGER)) CHECK (day >= 1 AND day <= 31),
-  'time' TEXT DEFAULT NULL CHECK (length(time)=5 OR time IS NULL)
+CREATE TABLE main (
+	id    INTEGER NOT NULL PRIMARY KEY,
+	year  INTEGER NOT NULL
+	       DEFAULT(CAST(strftime('%Y', 'now', 'localtime') AS INTEGER)),
+	month INTEGER NOT NULL
+	       DEFAULT(CAST(strftime('%m', 'now', 'localtime') AS INTEGER))
+	       CHECK(month BETWEEN 1 AND 12),
+	day   INTEGER NOT NULL
+	       DEFAULT(CAST(strftime('%d', 'now', 'localtime') AS INTEGER))
+	       CHECK(day BETWEEN 1 AND 31),
+	time  TEXT
+	       DEFAULT(NULL)
+	       CHECK(length(time)=5 OR time IS NULL)
 );
 
 
-CREATE TABLE 'extrainfo' (
-  'id' INTEGER NOT NULL,
-  'datetime' TEXT NOT NULL,
-  'ordinal' INTEGER,
-  PRIMARY KEY (id),
-  FOREIGN KEY (id) REFERENCES main(rowid)
+CREATE TABLE extra (
+	main_id  INTEGER NOT NULL,
+	datetime TEXT    NOT NULL,
+	ordinal  INTEGER,
+	PRIMARY KEY (main_id),
+	FOREIGN KEY (main_id) REFERENCES main(id)
 ) WITHOUT ROWID;
 
 
-CREATE TRIGGER 'makeinfo'
-AFTER INSERT ON 'main'
+CREATE TRIGGER make_extra_info
+AFTER INSERT ON main
 FOR EACH ROW
 BEGIN
-  INSERT INTO
-    extrainfo(id, datetime, ordinal)
-  VALUES
-    (NEW.rowid, printf('%d-%02d-%02d %s', NEW.year, NEW.month, NEW.day, IFNULL(NEW.time, '12:00')), NULL)
-  ;
+	INSERT INTO extra(main_id, ordinal, datetime)
+	VALUES (NEW.id, NULL,
+	        printf('%d-%02d-%02d %s', NEW.year, NEW.month, NEW.day, IFNULL(NEW.time, '12:00')));
 
-  UPDATE
-    extrainfo
-  SET
-    ordinal=CAST(julianday(datetime, 'start of day') - julianday('1970-01-01') AS INTEGER)
-  WHERE
-    id=NEW.rowid
-  ;
+	UPDATE extra
+	   SET ordinal = CAST(julianday(datetime, 'start of day') - julianday('1970-01-01') AS INTEGER)
+	 WHERE main_id=NEW.id;
 END;
 
 
-CREATE TRIGGER 'updateinfo'
-AFTER UPDATE ON 'main'
+CREATE TRIGGER update_extra_info
+AFTER UPDATE ON main
 FOR EACH ROW
 BEGIN
-  UPDATE
-    extrainfo
-  SET
-    datetime=printf('%d-%02d-%02d %s', NEW.year, NEW.month, NEW.day, IFNULL(NEW.time, '12:00'))
-  WHERE
-    id=NEW.rowid
-  ;
+	UPDATE extra
+	   SET datetime = printf('%d-%02d-%02d %s', NEW.year, NEW.month, NEW.day, IFNULL(NEW.time, '12:00'))
+	 WHERE main_id=NEW.rid;
 
-  UPDATE
-    extrainfo
-  SET
-    ordinal=CAST(julianday(datetime, 'start of day') - julianday('1970-01-01') AS INTEGER)
-  WHERE
-    id=NEW.rowid
-  ;
+	UPDATE extra
+	   SET ordinal = CAST(julianday(datetime, 'start of day') - julianday('1970-01-01') AS INTEGER)
+	 WHERE main_id=NEW.id;
 END;
-
